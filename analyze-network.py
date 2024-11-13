@@ -1,12 +1,19 @@
 from scapy.all import rdpcap
+from scapy.layers.inet import IP, ICMP
 from scapy.layers.l2 import Ether, ARP
 from mac_vendor_lookup import MacLookup
 
 
 SPECIAL_MACS = ("ff:ff:ff:ff:ff:ff", "00:00:00:00:00:00")
 
-MAC_INFO = {"MAC": "Unknown", "IP": "Unknown", "VENDOR": "Unknown"}
-IP_INFO = {"IP": "Unknown", "MAC": "Unknown"}
+LINUX_TTL = range(1, 64+1)
+WINDOWS_TTL = range(64+1, 128+1)
+LINUX_BROADCAST_MAC = "00:00:00:00:00:00"
+WINDOWS_BROADCAST_MAC = "ff:ff:ff:ff:ff:ff"
+
+MAC_INFO = {"MAC": "Unknown", "IP": "Unknown", "VENDOR": "Unknown", "ROUTER": "Unknown", "BROADCAST MAC": "Unknown"}
+IP_INFO = {"IP": "Unknown", "MAC": "Unknown", "IP VERSION": "Unknown", "TTL": "Unknown"}
+
 
 class AnalyzeNetwork:
     def __init__(self, pcap_path):
@@ -27,6 +34,9 @@ class AnalyzeNetwork:
             if ARP in packet:
                 ips.add(packet[ARP].psrc)
                 ips.add(packet[ARP].pdst)
+            elif IP in packet:
+                ips.add(packet[IP].dst)
+                ips.add(packet[IP].src)
 
         return list(ips)
 
@@ -70,6 +80,27 @@ class AnalyzeNetwork:
                 if packet[ARP].hwdst == mac:
                     mac_info["IP"] = packet[ARP].pdst
                     break
+            elif IP in packet:
+                if packet[Ether].src == mac:
+                    mac_info["IP"] = packet[IP].src
+                    break
+
+        for packet in self.pcap:
+            if ICMP in packet:
+                if packet[ICMP].type == 8:
+                    if packet[Ether].dst == mac:
+                        mac_info["ROUTER"] = "yes"
+                        break
+
+                    if packet[Ether].src == mac:
+                        mac_info["ROUTER"] = "no"
+                        break
+
+        for packet in self.pcap:
+            if ARP in packet:
+                if packet[ARP].hwsrc == mac and packet[ARP].hwdst in (LINUX_BROADCAST_MAC, WINDOWS_BROADCAST_MAC):
+                    mac_info["BROADCAST MAC"] = packet[ARP].hwdst
+                    break
 
         return mac_info
 
@@ -92,8 +123,43 @@ class AnalyzeNetwork:
                 if packet[ARP].pdst == ip and packet[ARP].hwdst not in SPECIAL_MACS:
                     ip_info["MAC"] = packet[ARP].pdst
                     break
+            elif IP in packet:
+                if packet[IP].src == ip:
+                    ip_info["MAC"] = packet[Ether].src
+                    break
+
+        for packet in self.pcap:
+            if IP in packet and packet[IP].src == ip:
+                ip_info["IP VERSION"] = packet[IP].version
+                break
+
+        for packet in self.pcap:
+            if IP in packet and packet[IP].src == ip:
+                ip_info["TTL"] = packet[IP].ttl
+                break
 
         return ip_info
+
+
+    def guess_os(self, device_info):
+        """
+        returns assumed operating system of a device
+        """
+
+        if "TTL" in device_info:
+            if device_info["TTL"] in LINUX_TTL:
+                return "LINUX"
+
+            if device_info["TTL"] in WINDOWS_TTL:
+                return "WINDOWS"
+        elif "BROADCAST MAC" in device_info:
+            if device_info["BROADCAST MAC"] == LINUX_BROADCAST_MAC:
+                return "LINUX"
+
+            if device_info["BROADCAST MAC"] == WINDOWS_BROADCAST_MAC:
+                return "WINDOWS"
+
+        return "Unknown"
 
 
     def get_info(self):
@@ -103,7 +169,13 @@ class AnalyzeNetwork:
 
         info = []
         for mac in self.get_macs():
-            info.append(self.get_info_by_mac(mac))
+            mac_info = self.get_info_by_mac(mac)
+            mac_info["OS"] = self.guess_os(mac_info)
+            info.append(mac_info)
+        for ip in self.get_ips():
+            ip_info = self.get_info_by_ip(ip)
+            ip_info["OS"] = self.guess_os(ip_info)
+            info.append(ip_info)
 
         return info
 
@@ -117,4 +189,4 @@ class AnalyzeNetwork:
 
 
 if __name__ == '__main__':
-    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-00.pcapng").get_info()]))
+    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-01.pcapng").get_info()]))
