@@ -11,7 +11,7 @@ WINDOWS_TTL = range(64+1, 128+1)
 LINUX_BROADCAST_MAC = "00:00:00:00:00:00"
 WINDOWS_BROADCAST_MAC = "ff:ff:ff:ff:ff:ff"
 
-MAC_INFO = {"MAC": "Unknown", "IP": "Unknown", "VENDOR": "Unknown", "ROUTER": "Unknown", "BROADCAST MAC": "Unknown"}
+MAC_INFO = {"MAC": "Unknown", "IP": "Unknown", "VENDOR": "Unknown", "BROADCAST MAC": "Unknown"}
 IP_INFO = {"IP": "Unknown", "MAC": "Unknown", "IP VERSION": "Unknown", "TTL": "Unknown"}
 
 
@@ -84,17 +84,6 @@ class AnalyzeNetwork:
                 if packet[Ether].src == mac:
                     mac_info["IP"] = packet[IP].src
                     break
-
-        for packet in self.pcap:
-            if ICMP in packet:
-                if packet[ICMP].type == 8:
-                    if packet[Ether].dst == mac:
-                        mac_info["ROUTER"] = "yes"
-                        break
-
-                    if packet[Ether].src == mac:
-                        mac_info["ROUTER"] = "no"
-                        break
 
         for packet in self.pcap:
             if ARP in packet:
@@ -189,4 +178,4 @@ class AnalyzeNetwork:
 
 
 if __name__ == '__main__':
-    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-01.pcapng").get_info()]))
+    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-02.pcapng").get_info()]))
