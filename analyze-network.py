@@ -1,10 +1,11 @@
-from scapy.all import rdpcap
+from scapy.all import rdpcap, Raw
 from scapy.layers.inet import IP, TCP
 from scapy.layers.l2 import Ether, ARP
 from mac_vendor_lookup import MacLookup
 
 
-SPECIAL_MACS = ("ff:ff:ff:ff:ff:ff", "00:00:00:00:00:00")
+SPECIAL_MACS = ["ff:ff:ff:ff:ff:ff", "00:00:00:00:00:00"]
+HTTP_TERMS = [b'GET', b'POST', b'HEAD', b'PUT', b'DELETE', b'CONNECT', b'OPTIONS', b'TRACE']
 
 LINUX_TTL = range(60, 64+1)
 WINDOWS_TTL = range(64+1, 128+1)
@@ -137,6 +138,14 @@ class AnalyzeNetwork:
             if TCP in packet:
                 if packet[IP].src == ip:
                     if packet[TCP].sport in sports:
+                        if Raw in packet:
+                            for term in HTTP_TERMS:
+                                if term in packet[Raw].load:
+                                    for connection in connections:
+                                        if connection["SPORT"] == packet[TCP].sport:
+                                            connection["PROTO"] = "HTTP"
+                                    break
+
                         continue
 
                     connection = dict(CONNECTION)
@@ -146,6 +155,12 @@ class AnalyzeNetwork:
                     connection["DIP"] = packet[IP].dst
                     connection["SPORT"] = packet[TCP].sport
                     connection["DPORT"] = packet[TCP].dport
+
+                    if Raw in packet:
+                        for term in HTTP_TERMS:
+                            if term in packet[Raw].load:
+                                connection["PROTO"] = "HTTP"
+                                break
 
                     connections.append(connection)
                     sports.append(packet[TCP].sport)
@@ -218,4 +233,4 @@ class AnalyzeNetwork:
 
 
 if __name__ == '__main__':
-    print("\n".join([str(d) for d in AnalyzeNetwork("nmap.pcapng").get_info()]))
+    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-03.pcapng").get_info()]))
