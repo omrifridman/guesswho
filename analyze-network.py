@@ -69,7 +69,11 @@ class AnalyzeNetwork:
         mac_info = dict(MAC_INFO)
 
         mac_info["MAC"] = mac
-        mac_info["VENDOR"] = MacLookup().lookup(mac)
+
+        try:
+            mac_info["VENDOR"] = MacLookup().lookup(mac)
+        except Exception as e:
+            pass
 
         for packet in self.pcap:
             if ARP in packet:
@@ -189,9 +193,16 @@ class AnalyzeNetwork:
             ip_infos.append(ip_info)
 
         info = []
+        seen_ips = []
         for mac_info in mac_infos:
             for ip_info in ip_infos:
                 if mac_info["MAC"] == ip_info["MAC"]:
+                    info.append(mac_info | ip_info)
+                    seen_ips.append(ip_info["IP"])
+                    continue
+        for ip_info in ip_infos:
+            for mac_info in mac_infos:
+                if ip_info["IP"] == mac_info["IP"] and ip_info["IP"] not in seen_ips:
                     info.append(mac_info | ip_info)
                     continue
 
@@ -207,4 +218,4 @@ class AnalyzeNetwork:
 
 
 if __name__ == '__main__':
-    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-02.pcapng").get_info()]))
+    print("\n".join([str(d) for d in AnalyzeNetwork("nmap.pcapng").get_info()]))
