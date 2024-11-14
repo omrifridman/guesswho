@@ -1,5 +1,5 @@
 from scapy.all import rdpcap
-from scapy.layers.inet import IP, ICMP
+from scapy.layers.inet import IP, TCP
 from scapy.layers.l2 import Ether, ARP
 from mac_vendor_lookup import MacLookup
 
@@ -12,8 +12,8 @@ LINUX_BROADCAST_MAC = "00:00:00:00:00:00"
 WINDOWS_BROADCAST_MAC = "ff:ff:ff:ff:ff:ff"
 
 MAC_INFO = {"MAC": "Unknown", "IP": "Unknown", "VENDOR": "Unknown", "BROADCAST MAC": "Unknown"}
-IP_INFO = {"IP": "Unknown", "MAC": "Unknown", "IP VERSION": "Unknown", "TTL": "Unknown"}
-
+IP_INFO = {"IP": "Unknown", "MAC": "Unknown", "IP VERSION": "Unknown", "TTL": "Unknown", "CONNECTIONS": []}
+CONNECTION = {"PROTO": "Unknown", "SIP": "Unknown", "DIP": "Unknown", "SPORT": "Unknown", "DPORT": "Unknown"}
 
 class AnalyzeNetwork:
     def __init__(self, pcap_path):
@@ -127,6 +127,26 @@ class AnalyzeNetwork:
                 ip_info["TTL"] = packet[IP].ttl
                 break
 
+        connections = []
+        sports = []
+        for packet in self.pcap:
+            if TCP in packet:
+                if packet[IP].src == ip:
+                    if packet[TCP].sport in sports:
+                        continue
+
+                    connection = dict(CONNECTION)
+
+                    connection["PROTO"] = "TCP"
+                    connection["SIP"] = packet[IP].src
+                    connection["DIP"] = packet[IP].dst
+                    connection["SPORT"] = packet[TCP].sport
+                    connection["DPORT"] = packet[TCP].dport
+
+                    connections.append(connection)
+                    sports.append(packet[TCP].sport)
+        ip_info["CONNECTIONS"] = connections
+
         return ip_info
 
 
@@ -178,4 +198,4 @@ class AnalyzeNetwork:
 
 
 if __name__ == '__main__':
-    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-02.pcapng").get_info()]))
+    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-03.pcapng").get_info()]))
