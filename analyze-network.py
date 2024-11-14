@@ -6,7 +6,7 @@ from mac_vendor_lookup import MacLookup
 
 SPECIAL_MACS = ("ff:ff:ff:ff:ff:ff", "00:00:00:00:00:00")
 
-LINUX_TTL = range(1, 64+1)
+LINUX_TTL = range(60, 64+1)
 WINDOWS_TTL = range(64+1, 128+1)
 LINUX_BROADCAST_MAC = "00:00:00:00:00:00"
 WINDOWS_BROADCAST_MAC = "ff:ff:ff:ff:ff:ff"
@@ -207,4 +207,4 @@ class AnalyzeNetwork:
 
 
 if __name__ == '__main__':
-    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-03.pcapng").get_info()]))
+    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-02.pcapng").get_info()]))
