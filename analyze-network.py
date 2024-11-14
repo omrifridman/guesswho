@@ -176,15 +176,24 @@ class AnalyzeNetwork:
         returns a list of dicts with information about every device in the pcap
         """
 
-        info = []
+        mac_infos = []
         for mac in self.get_macs():
             mac_info = self.get_info_by_mac(mac)
             mac_info["OS"] = self.guess_os(mac_info)
-            info.append(mac_info)
+            mac_infos.append(mac_info)
+
+        ip_infos = []
         for ip in self.get_ips():
             ip_info = self.get_info_by_ip(ip)
             ip_info["OS"] = self.guess_os(ip_info)
-            info.append(ip_info)
+            ip_infos.append(ip_info)
+
+        info = []
+        for mac_info in mac_infos:
+            for ip_info in ip_infos:
+                if mac_info["MAC"] == ip_info["MAC"]:
+                    info.append(mac_info | ip_info)
+                    continue
 
         return info
 
