@@ -11,9 +11,11 @@ LINUX_TTL = range(60, 64+1)
 WINDOWS_TTL = range(64+1, 128+1)
 LINUX_BROADCAST_MAC = "00:00:00:00:00:00"
 WINDOWS_BROADCAST_MAC = "ff:ff:ff:ff:ff:ff"
+LINUX_DF = "True"
+WINDOWS_DF = "False"
 
 MAC_INFO = {"MAC": "Unknown", "IP": "Unknown", "VENDOR": "Unknown", "BROADCAST MAC": "Unknown"}
-IP_INFO = {"IP": "Unknown", "MAC": "Unknown", "IP VERSION": "Unknown", "TTL": "Unknown", "CONNECTIONS": []}
+IP_INFO = {"IP": "Unknown", "MAC": "Unknown", "IP VERSION": "Unknown", "TTL": "Unknown", "DF": "Unknown", "CONNECTIONS": []}
 CONNECTION = {"PROTO": "Unknown", "SIP": "Unknown", "DIP": "Unknown", "SPORT": "Unknown", "DPORT": "Unknown"}
 
 class AnalyzeNetwork:
@@ -130,6 +132,7 @@ class AnalyzeNetwork:
         for packet in self.pcap:
             if IP in packet and packet[IP].src == ip:
                 ip_info["TTL"] = packet[IP].ttl
+                ip_info["DF"] = "True" if packet[IP].flags.DF else "False"
                 break
 
         connections = []
@@ -173,8 +176,14 @@ class AnalyzeNetwork:
         """
         returns assumed operating system of a device
         """
+        
+        if "DF" in device_info:
+            if device_info["DF"] == LINUX_DF:
+                return "LINUX"
 
-        if "TTL" in device_info:
+            if device_info["DF"] == WINDOWS_DF:
+                return "WINDOWS"
+        elif "TTL" in device_info:
             if device_info["TTL"] in LINUX_TTL:
                 return "LINUX"
 
@@ -233,4 +242,4 @@ class AnalyzeNetwork:
 
 
 if __name__ == '__main__':
-    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-03.pcapng").get_info()]))
+    print("\n".join([str(d) for d in AnalyzeNetwork("pcap-02.pcapng").get_info()]))
